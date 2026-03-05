@@ -1,57 +1,111 @@
 using UnityEngine;
-using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 public class PlayerController : MonoBehaviour
 {
-    Vector2 lastMovement;
-    Rigidbody2D rb;
-    [SerializeField]
-    float moveSpeed;
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    
+    [Header("Movement")]
+    public float moveSpeed = 5f;
+
+    private Rigidbody2D rb;
+    private Vector2 movement;
+
+    private DoorController currentDoor;
+
+    [Header("UI")]
+    private GameObject buttonParent;
+    private Button openButton;
+    private Button closeButton;
+    private Button lockButton;
+    private Button unlockButton;
+
     void Start()
     {
-        lastMovement = Vector2.zero;
         rb = GetComponent<Rigidbody2D>();
 
-        Button openbutton = GameObject.Find("OpenButton").GetComponent<Button>();
-        openbutton.onClick.AddListener(OnOpenButton);
+        // UI
+        buttonParent = GameObject.Find("DoorButtons");
+
+        openButton = GameObject.Find("OpenButton").GetComponent<Button>();
+        closeButton = GameObject.Find("CloseButton").GetComponent<Button>();
+        lockButton = GameObject.Find("LockButton").GetComponent<Button>();
+        unlockButton = GameObject.Find("UnlockButton").GetComponent<Button>();
+
+        openButton.onClick.AddListener(OnOpenButtonPress);
+        closeButton.onClick.AddListener(OnCloseButtonPress);
+        lockButton.onClick.AddListener(OnLockButtonPress);
+        unlockButton.onClick.AddListener(OnUnlockButtonPress);
+
+        buttonParent.SetActive(false);
     }
 
-    void OnOpenButton()
-    {
-        Debug.Log("Open button was pressed");
-    }
-
-    // Update is called once per frame
     void Update()
     {
-        
+        // X ja Y akselit 2D-pelissï¿½
+        movement.x = Input.GetAxisRaw("Horizontal");
+        movement.y = Input.GetAxisRaw("Vertical");
+
+        HandleKeyboardDoorInput();
     }
 
-    private void FixedUpdate()
+    void FixedUpdate()
     {
-
-        rb.MovePosition(rb.position + lastMovement * moveSpeed * Time.fixedDeltaTime);
+        rb.linearVelocity = movement.normalized * moveSpeed;
     }
 
-    private void OnTriggerEnter2D(Collider2D collision)
+    // ======================
+    // Oven kï¿½yttï¿½ E-nï¿½ppï¿½imellï¿½
+    // ======================
+    void HandleKeyboardDoorInput()
     {
-        // Huomaa mitä pelaaja löytää
-        if (collision.CompareTag("Door"))
+        if (currentDoor == null) return;
+
+        if (Input.GetKeyDown(KeyCode.E))
         {
-            Debug.Log("Found Door");
-        }
-        else if (collision.CompareTag("Merchant"))
-        {
-            Debug.Log("Found Merchant");
+            currentDoor.ReceiveAction(DoorController.Toiminto.Avaa);
         }
     }
 
-    void OnMoveAction(InputValue value)
+    // ======================
+    // 2D Triggerit
+    // ======================
+    void OnTriggerEnter2D(Collider2D other)
     {
-        Vector2 v = value.Get<Vector2>();
-        lastMovement = v;
-    }    
+        if (other.CompareTag("Door"))
+        {
+            currentDoor = other.GetComponent<DoorController>();
+            buttonParent.SetActive(true);
+        }
+    }
+
+    void OnTriggerExit2D(Collider2D other)
+    {
+        if (other.CompareTag("Door"))
+        {
+            currentDoor = null;
+            buttonParent.SetActive(false);
+        }
+    }
+
+    // ======================
+    // UI-napit
+    // ======================
+    void OnOpenButtonPress()
+    {
+        currentDoor?.ReceiveAction(DoorController.Toiminto.Avaa);
+    }
+
+    void OnCloseButtonPress()
+    {
+        currentDoor?.ReceiveAction(DoorController.Toiminto.Sulje);
+    }
+
+    void OnLockButtonPress()
+    {
+        currentDoor?.ReceiveAction(DoorController.Toiminto.Lukitse);
+    }
+
+    void OnUnlockButtonPress()
+    {
+        currentDoor?.ReceiveAction(DoorController.Toiminto.AvaaLukitus);
+    }
 }
